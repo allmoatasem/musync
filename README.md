@@ -16,6 +16,11 @@ pip install -e .
 
 Requires Python 3.11+.
 
+> **Tip (macOS):** If `logico` isn't found after installation, your shell may be inside a project-specific virtualenv. Install into the system Homebrew Python to make the command globally available:
+> ```bash
+> /opt/homebrew/bin/pip3 install -e . --break-system-packages
+> ```
+
 ## Usage
 
 ### Read a project
@@ -63,9 +68,11 @@ Tracks are matched by name. Only matching tracks in the destination are updated;
 |-----------------|-----------|------|--------------------|-------|
 | Logic Pro       | `.logicx` | Yes  | Yes                | Modifies the binary `ProjectData` in place |
 | StaffPad        | `.stf`    | Yes  | Yes                | SQLite-backed, fastest format to work with |
-| Dorico          | `.dorico` | Yes  | Partial†           | Tempo/time-signature/key-signature only |
+| Dorico          | `.dorico` | Yes  | Partial†           | Tempo/time-signature/key-signature only; note writing pending |
 
-† Note writing into Dorico is the one piece still being figured out — Dorico stores its data in a custom binary format whose `NoteEventDefinition` structure can't be reverse-engineered from a project that has no existing notes. The DTN binary parser and serializer round-trip a 2 MB Dorico file byte-identically, so the foundation is solid; the remaining work is figuring out the exact entity layout for new note events.
+Dorico read support covers both the **legacy binary encoding** (Dorico ≤ 4.x, opcodes `0xFC/FD/FE/FF`) and the **modern encoding** (Dorico 5.x+, opcodes `0x1C/1D/1E/1F`) — auto-detected per file. Both formats round-trip byte-identically.
+
+† Note *writing* into Dorico is still pending. The DTN binary parser/serializer is complete, and tempo/time-signature/key-signature writes are working. Note writing requires cloning the `NoteEventDefinition` entity structure from an existing note — the structure is now fully understood from a real score, but the cloning logic hasn't been wired up yet.
 
 ## Status
 
@@ -81,14 +88,17 @@ All three formats parse into a common music model:
 
 Verified against real project files:
 - `Code Noir.stf` (StaffPad, 9 parts, ~96 notes) — parses in ~0.3s
-- `test.dorico` (Dorico, 1 Flugelhorn) — parses cleanly
+- `test.dorico` (Dorico, 1 Flugelhorn, legacy format) — parses cleanly
+- `Salut d'Amour.dorico` (Dorico 5.1.81, violin + piano, 1056 notes) — full read including new opcode format
 - `Project.logicx` (Logic Pro, 1 track, 3 notes) — parses cleanly
+- `Salut d'Amour.logicx` (Logic Pro, MIDI from the Dorico score) — parses cleanly
+- `Code Noir.logicx` (Logic Pro, 4 tracks) — parses cleanly
 
 ### Phase 2 — Writers (mostly done)
 
 - **StaffPad writer** — Done. Round-trip verified across all 96 notes.
 - **Logic Pro writer** — Done. Round-trip verified across all 3 notes.
-- **Dorico writer** — Tempo/time signature/key signature writes done. The DTN binary serializer round-trips a 2 MB score file byte-identically. Note writing pending — needs a Dorico file with existing notes as a template to reverse-engineer the `NoteEventDefinition` structure.
+- **Dorico writer** — Tempo/time signature/key signature writes done. The DTN binary serializer round-trips both a 2 MB Dorico 4.x file and a 1 MB Dorico 5.x file byte-identically. Note writing is the last piece — the `NoteEventDefinition` structure is now fully understood from a real score (Salut d'Amour); the cloning/insertion logic is still to be implemented.
 
 ### Future phases
 
@@ -153,13 +163,19 @@ A ZIP archive containing custom binary `.dtn` files:
 - 12-byte header: version, type, key_count
 - Key string table (field names)
 - Value string table (all values stored as strings)
-- Entity tree using LEB128 varints and four opcodes:
-  - `0xFE` — entity start
-  - `0xFF` — array entity
-  - `0xFC` — key-value pair
-  - `0xFD` — null/empty placeholder
+- Entity tree using LEB128 varints and four opcodes
 
-Musical hierarchy: `kScore → flows → eventStreams → blocks → events`. Note pitch uses diatonic representation (`diatonicStep`, `chromaticAlteration`, `octave`) rather than MIDI numbers.
+Two opcode encodings exist (auto-detected):
+
+| Encoding | Files | Entity | Array | Key-value | Null |
+|----------|-------|--------|-------|-----------|------|
+| Legacy (Dorico ≤ 4.x) | first byte ≥ `0xFC` | `0xFE` | `0xFF` | `0xFC` | `0xFD` |
+| Modern (Dorico 5.x+) | first byte < `0x20` | `0x1F` | `0x1E` | `0x1C` | `0x1D` |
+
+Musical hierarchy: `kScore → flows → blocks → events`. Notes live in `kVoiceStream` blocks.
+
+- **Legacy format**: note pitch stored as `diatonicStep + chromaticAlteration + octave` in a nested `pitch` entity.
+- **Modern format**: note pitch stored directly as a MIDI integer string in a `pitch` key-value pair. Positions are rational strings (`"57/2"` = 28.5 quarter notes).
 
 ## Project structure
 
@@ -168,9 +184,10 @@ src/logico/
 ├── model.py              Common music data model
 ├── cli.py                CLI entry point
 ├── dorico/
-│   ├── dtn.py            DTN binary parser
+│   ├── dtn.py            DTN binary parser/serializer (legacy + modern opcodes)
 │   ├── parser.py         .dorico ZIP → DtnFile
-│   └── extractor.py      DtnFile → Project
+│   ├── extractor.py      DtnFile → Project (both format variants)
+│   └── writer.py         Project → .dorico (tempo/time-sig/key-sig; notes pending)
 ├── staffpad/
 │   ├── parser.py         .stf SQLite parser
 │   ├── extractor.py      StfProject → Project

@@ -159,6 +159,7 @@ A vocabulary list before we read any real code:
 | `sqlite3` | Built-in SQLite database driver | StaffPad parser |
 | `zipfile` | Read/write ZIP archives | Dorico parser |
 | `plistlib` | Read/write Apple's plist files (XML or binary) | Logic Pro parser |
+| `fractions.Fraction` | Exact rational arithmetic (no floating-point rounding) | Dorico extractor — position strings like `'57/2'` |
 | Type hints | Annotations like `def f(x: int) -> str:` for documentation + tools | Everywhere |
 | `Optional` / `\| None` | "This may be None" — Python's null type | Many places |
 | List/dict comprehensions | `[x*2 for x in xs]` — concise data transforms | All the extractors |
@@ -409,7 +410,77 @@ sys.setrecursionlimit(10000)
 
 By default Python only allows 1000 levels of function nesting to prevent stack overflows. For deeply nested data, you raise the limit (or convert to an iterative approach with an explicit stack).
 
-### Step 6: The serializer is just the inverse
+### Step 6: Discovering a format revision in the wild
+
+One of the most instructive reverse-engineering moments in this project came from trying to read a real Dorico 5 project file (Salut d'Amour, Op. 12).
+
+The parser crashed immediately:
+
+```
+ValueError: Expected FE opcode at tree start (0x53d72)
+```
+
+The byte at the expected position was `0x1F`, not `0xFE`. Our whole entity-tree parser assumed `0xFE` = entity start. Something had changed.
+
+**How we investigated:**
+
+1. **Compared the headers.** Both files were `version=4`. The version field didn't distinguish them.
+
+2. **Printed the raw bytes.** The first byte after the value table was `0x1F` in the new file vs `0xFE` in the old one. `0x1F` is 31; `0xFE` is 254. The difference is exactly `0xE0 = 224`.
+
+3. **Checked all four opcodes.** `0xFC` (252) → `0x1C` (28). `0xFD` (253) → `0x1D` (29). `0xFE` (254) → `0x1E` (30). `0xFF` (255) → `0x1F` (31). Every opcode shifted by exactly −224. Dorico changed its encoding systematically.
+
+4. **Verified by parsing.** We wrote a quick test parser using `0x1C/1D/1E/1F` and it immediately produced:
+   ```
+   ARR 'kScore' flags=0 n=15
+     KV 'fileVersion'='1.1301'
+     KV 'title'="Salut d'Amour..."
+   ```
+   The data made sense, confirming the theory.
+
+**The fix in code:**
+
+After parsing the key and value tables, we peek at the first byte and branch:
+
+```python
+first_byte = data[pos]
+if first_byte in (OP_ENTITY, OP_ARRAY):         # 0xFE or 0xFF
+    uses_new = False
+    op_entity, op_array, op_kv, op_null = OP_ENTITY, OP_ARRAY, OP_KV, OP_NULL
+elif first_byte in (OP_ENTITY_V2, OP_ARRAY_V2): # 0x1F or 0x1E
+    uses_new = True
+    op_entity, op_array, op_kv, op_null = OP_ENTITY_V2, OP_ARRAY_V2, OP_KV_V2, OP_NULL_V2
+```
+
+We pass the four opcode values through every recursive parsing function. The serializer uses whichever set the parser detected. The result: both the old `test.dorico` and the new Salut d'Amour file round-trip byte-identically.
+
+**New format, new pitch encoding.** The Dorico 5 format also changed how note pitch is stored. The legacy format used a nested entity with three fields (`diatonicStep`, `chromaticAlteration`, `octave`) that together encode a pitch in music-theory terms. The modern format just stores a MIDI integer directly:
+
+```python
+# Legacy: pitch entity with three KV children
+pitch_entity = event.get_entity("pitch", k)
+step, alteration, octave = ...
+midi_pitch = diatonic_to_midi(step, alteration, octave)
+
+# Modern: pitch is a single KV on the event itself
+midi_pitch = int(kvs["pitch"])   # e.g., "80" → Ab5
+```
+
+Positions also changed: from integer ticks to rational strings in quarter notes (`"57/2"` = 28.5 quarter notes). Python's `fractions.Fraction` handles this cleanly:
+
+```python
+from fractions import Fraction
+
+def _parse_position(pos_str: str, ppq: int) -> int:
+    return int(Fraction(pos_str) * ppq)
+# "57/2" * 960 = 27360 ticks
+```
+
+`Fraction` does exact arithmetic — `Fraction("57/2") * 960` gives exactly `27360`, with no floating-point rounding.
+
+**The lesson:** formats evolve. A robust parser detects the variant rather than hard-coding assumptions. The version number in the file header is often *not* enough — you have to check the actual bytes.
+
+### Step 7: The serializer is just the inverse
 
 The cool thing about a clean parser is that the serializer becomes obvious — just do everything in reverse:
 
@@ -422,7 +493,7 @@ def _serialize_entity(entity, out):
     # ... write child key list, then children recursively
 ```
 
-We test by parsing a 2 MB file and re-serializing it — the output is byte-identical to the input. That's our proof that we understood the format completely.
+We test by parsing real files and re-serializing them — the output is byte-identical to the input. That's our proof that we understood the format completely. Both the legacy `test.dorico` and the modern Salut d'Amour file pass this test.
 
 ---
 
@@ -710,11 +781,16 @@ When something goes wrong, **raise an exception** with a descriptive message. Do
 
 If you want to extend this project, the most interesting (and most needed) tasks are:
 
-1. **Dorico note writing** — figure out the `NoteEventDefinition` entity structure and let us write notes into Dorico files. You'll need a Dorico file that has at least one note in it as a template.
-2. **Better track matching** — the current sync only matches tracks by exact name. Add fuzzy matching, instrument family detection, and a config file for user-defined mappings.
-3. **A file watcher** — `logico watch source.stf dest.logicx` that automatically syncs whenever either file changes. Use the `watchdog` library (already in our dependencies).
-4. **A test suite** — write `pytest` tests that verify round-tripping for all three formats, so we don't break things accidentally.
+1. **Dorico note writing** — the `NoteEventDefinition` entity structure is now fully understood from a real score (Salut d'Amour), and the DTN serializer works. What's left is the *cloning* logic: clear existing events from a voice block, clone the template entity structure for each note, set its `pitch`, `position`, and `duration` fields, and write it back. The infrastructure is ready; this is just careful tree manipulation.
 
-Each of those is a self-contained project, and each one teaches a different Python skill (binary manipulation / data structures / async programming / testing).
+2. **Multi-track Dorico read** — right now all voice stream blocks get collapsed into one track. The project needs to map voice blocks → instrument tracks using the flow's `eventStreams` → `blockInstanceIDs` → player/stave metadata chain.
+
+3. **Better track matching** — the current sync only matches tracks by exact name. Add fuzzy matching, instrument family detection, and a `logico.toml` config file for user-defined mappings.
+
+4. **A file watcher** — `logico watch source.stf dest.logicx` that automatically syncs whenever either file changes. Use the `watchdog` library (already in our dependencies). The main challenge is debouncing (the app may write the file several times during a save) and avoiding sync loops (the watcher shouldn't re-trigger on its own writes).
+
+5. **A test suite** — write `pytest` tests that verify round-tripping for all three formats, so we don't break things accidentally. The test projects (`test.dorico`, `Code Noir.stf`, `Project.logicx`) are already in the repo.
+
+Each of those is a self-contained project, and each one teaches a different Python skill (binary tree manipulation / data modelling / OS event handling / testing).
 
 Have fun.
