@@ -1,4 +1,4 @@
-/** HTTP client for the local MuSync Python server. */
+/** MuSync HTTP API client — talks to the local FastAPI server on port 7765. */
 
 const PORT = 7765
 const BASE = `http://127.0.0.1:${PORT}`
@@ -12,20 +12,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       body: body ? JSON.stringify(body) : undefined,
     })
   } catch {
-    throw new Error('Cannot reach the MuSync server. If running in dev mode, start it with: musync serve')
+    throw new Error('Cannot reach the MuSync server.')
   }
   const json = await res.json()
   if (!res.ok) throw new Error(json.detail ?? `HTTP ${res.status}`)
   return json as T
-}
-
-export async function checkHealth(): Promise<boolean> {
-  try {
-    const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(1500) })
-    return res.ok
-  } catch {
-    return false
-  }
 }
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -89,7 +80,23 @@ export interface NoteChangeMod extends NoteChange {
   new_velocity: number
 }
 
-// ── API calls ─────────────────────────────────────────────────────────────────
+// ── public API ────────────────────────────────────────────────────────────────
+
+export async function checkHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(1500) })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+/** Open a native file-picker dialog via the server's /open_file endpoint. */
+export async function openFile(extensions?: string[]): Promise<string | null> {
+  const params = extensions?.length ? `?extensions=${extensions.join(',')}` : ''
+  const result = await request<{ path: string | null }>('GET', `/open_file${params}`)
+  return result.path
+}
 
 export const api = {
   health: () => request<{ ok: boolean }>('GET', '/health'),
@@ -103,12 +110,8 @@ export const api = {
   log: (path: string) =>
     request<{ snapshots: SnapshotInfo[] }>('GET', `/log?path=${encodeURIComponent(path)}`),
 
-  diff: (opts: {
-    path_a: string
-    path_b?: string
-    snapshot_a?: number
-    snapshot_b?: number
-  }) => request<DiffResult>('POST', '/diff', opts),
+  diff: (opts: { path_a: string; path_b?: string; snapshot_a?: number; snapshot_b?: number }) =>
+    request<DiffResult>('POST', '/diff', opts),
 
   revert: (path: string, snapshot: number) =>
     request<{ ok: boolean; backup_snapshot: number; restored_snapshot: number }>('POST', '/revert', { path, snapshot }),

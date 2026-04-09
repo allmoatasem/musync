@@ -1,29 +1,21 @@
+import { openFile } from '../api'
+
 interface FilePickerProps {
   label: string
   value: string
   onChange: (path: string) => void
   placeholder?: string
+  extensions?: string[]
 }
 
-declare global {
-  interface Window {
-    electronAPI?: {
-      openFile: (opts?: unknown) => Promise<string | null>
-      openFolder: () => Promise<string | null>
-    }
-  }
-}
-
-async function pickFile(): Promise<string | null> {
-  if (window.electronAPI) return window.electronAPI.openFile()
-  // Browser fallback: prompt
-  return prompt('Enter file path:')
-}
-
-export default function FilePicker({ label, value, onChange, placeholder }: FilePickerProps) {
+export default function FilePicker({ label, value, onChange, placeholder, extensions }: FilePickerProps) {
   const handleBrowse = async () => {
-    const path = await pickFile()
-    if (path) onChange(path)
+    try {
+      const path = await openFile(extensions)
+      if (path) onChange(path)
+    } catch (e) {
+      console.error('openFile error:', e)
+    }
   }
 
   return (

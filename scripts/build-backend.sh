@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
-# Build the Python backend into a self-contained binary for macOS.
-# Output: app/resources/musync-server  (bundled into the Electron app by electron-builder)
+# Build the MuSync desktop app into a self-contained bundle for macOS.
+# Output: dist/MuSync.app  (via PyInstaller + pywebview)
 #
 # Requirements:
-#   pip install pyinstaller
-#   pip install -e .   (musync package itself)
+#   pip install pyinstaller pywebview
+#   pip install .        (musync — must be non-editable for PyInstaller to bundle it)
+#   cd app && npm run build   (produces app/dist/)
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT_DIR="$REPO_ROOT/app/resources"
+OUT_DIR="$REPO_ROOT/dist"
 
-echo "Building Python backend with PyInstaller…"
+echo "Building MuSync desktop app with PyInstaller…"
 cd "$REPO_ROOT"
 
 pyinstaller \
   --noconfirm \
   --onedir \
-  --name musync-server \
+  --windowed \
+  --name MuSync \
   --distpath "$OUT_DIR" \
   --workpath /tmp/pyinstaller-build \
   --specpath /tmp/pyinstaller-specs \
+  --add-data "$REPO_ROOT/app/dist:web" \
   --hidden-import musync \
   --hidden-import musync.cli \
   --hidden-import musync.server \
@@ -38,21 +41,9 @@ pyinstaller \
   --hidden-import musync.logic.parser \
   --hidden-import musync.logic.extractor \
   --hidden-import musync.logic.writer \
-  --hidden-import uvicorn \
-  --hidden-import uvicorn.logging \
-  --hidden-import uvicorn.loops \
-  --hidden-import uvicorn.loops.auto \
-  --hidden-import uvicorn.protocols \
-  --hidden-import uvicorn.protocols.http \
-  --hidden-import uvicorn.protocols.http.auto \
-  --hidden-import uvicorn.protocols.websockets \
-  --hidden-import uvicorn.protocols.websockets.auto \
-  --hidden-import uvicorn.lifespan \
-  --hidden-import uvicorn.lifespan.on \
-  --hidden-import fastapi \
   --collect-all watchdog \
-  src/musync/server.py
+  --collect-all webview \
+  "$REPO_ROOT/app/main.py"
 
 echo ""
-echo "Done. Binary at: $OUT_DIR/musync-server/musync-server"
-echo "Next: cd app && npm run dist:mac"
+echo "Done. App bundle at: $OUT_DIR/MuSync.app"

@@ -49,7 +49,7 @@ export default function App() {
             background: serverOk === null ? 'var(--text-dim)' : serverOk ? 'var(--green)' : 'var(--red)',
             boxShadow: serverOk ? '0 0 5px var(--green)' : 'none',
           }} />
-          {serverOk === null ? 'Connecting…' : serverOk ? 'Server ready' : 'Server offline'}
+          {serverOk === null ? 'Connecting…' : serverOk ? 'Ready' : 'Server offline'}
         </div>
       </aside>
 
@@ -57,7 +57,7 @@ export default function App() {
         <div className="titlebar" />
         {!serverOk && serverOk !== null && (
           <div style={{ background: 'rgba(224,92,92,0.12)', borderBottom: '1px solid var(--red)', padding: '10px 24px', fontSize: 12, color: 'var(--red)' }}>
-            Python server is not running. In dev mode, run: <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 5px', borderRadius: 3 }}>musync serve</code>
+            Server not running. Start with: <code style={{ background: 'rgba(255,255,255,0.07)', padding: '1px 5px', borderRadius: 3 }}>musync serve</code>
           </div>
         )}
         {view === 'sync'    && <SyncView />}

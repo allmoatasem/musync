@@ -280,6 +280,25 @@ def watch_status() -> dict:
     }
 
 
+@app.get("/open_file")
+def open_file_dialog(extensions: str = Query(None)) -> dict:
+    """Open a native file picker via osascript (macOS) and return the selected path."""
+    import subprocess
+    ext_list = [e.strip() for e in extensions.split(",")] if extensions else None
+    if ext_list:
+        type_list = ", ".join(f'"{e}"' for e in ext_list)
+        script = f'POSIX path of (choose file with prompt "Select a project file" of type {{{type_list}}})'
+    else:
+        script = 'POSIX path of (choose file with prompt "Select a project file")'
+    try:
+        r = subprocess.run(["osascript", "-e", script],
+                           capture_output=True, text=True, timeout=120)
+        path = r.stdout.strip()
+        return {"path": path if path else None}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ── entry point ──────────────────────────────────────────────────────────────
 
 def serve(port: int = 7765) -> None:

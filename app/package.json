@@ -4,58 +4,18 @@
   "description": "Sync musical projects between Logic Pro, Dorico, and StaffPad",
   "author": "Moatasem Samir",
   "license": "MIT",
-  "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently --names \"py,vite,electron\" --prefix-colors \"yellow,cyan,magenta\" \"python3 -m musync serve\" \"vite\" \"wait-on http://127.0.0.1:7765/health http://localhost:5173 && electron . --no-server\"",
+    "dev": "vite",
     "build": "vite build",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:all": "npm run build && electron-builder --mac --win"
+    "preview": "vite preview"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "concurrently": "^8.2.0",
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "typescript": "^5.5.0",
-    "vite": "^5.4.0",
-    "wait-on": "^7.2.0"
-  },
-  "build": {
-    "appId": "com.musync.app",
-    "directories": { "output": "release" },
-    "productName": "MuSync",
-    "copyright": "Copyright © 2026 Moatasem Samir",
-    "asar": true,
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "resources/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "resources/",
-        "to": "resources/",
-        "filter": ["**/*"]
-      }
-    ],
-    "mac": {
-      "category": "public.app-category.music",
-      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
-      "icon": "resources/icon.icns"
-    },
-    "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
-      "icon": "resources/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    }
+    "vite": "^5.4.0"
   }
 }

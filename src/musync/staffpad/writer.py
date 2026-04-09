@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import shutil
+
+from ..mapping import _ALIAS_MAP, load_mapping
 import sqlite3
 import uuid
 from pathlib import Path
@@ -150,16 +152,41 @@ def write_staffpad(project: Project, stf_path: str, backup: bool = True) -> None
         # Get current min_object_ref for ID allocation
         next_obj = _get_next_obj(conn)
 
+        # Build alias index for destination parts
+        mappings = load_mapping()
+        src_fmt = project.source_format.lower()
+        part_by_name = {p.instrument.name: p for p in existing.parts}
+        part_alias: dict[int, object] = {}  # alias group → first matching part
+        for p in existing.parts:
+            g = _ALIAS_MAP.get(p.instrument.name.lower().strip())
+            if g is not None and g not in part_alias:
+                part_alias[g] = p
+
         # Match tracks by name
         for track in project.tracks:
             if not track.notes:
                 continue
 
             matching_part = None
-            for part in existing.parts:
-                if part.instrument.name == track.name:
-                    matching_part = part
-                    break
+            src_lower = track.name.lower().strip()
+
+            # 1. Explicit musync.toml mapping
+            for entry in mappings:
+                if entry.get(src_fmt, "").lower().strip() == src_lower:
+                    dest_name = entry.get("staffpad", "")
+                    if dest_name and dest_name in part_by_name:
+                        matching_part = part_by_name[dest_name]
+                        break
+
+            # 2. Exact name
+            if matching_part is None:
+                matching_part = part_by_name.get(track.name)
+
+            # 3. Fuzzy alias
+            if matching_part is None:
+                g = _ALIAS_MAP.get(src_lower)
+                if g is not None:
+                    matching_part = part_alias.get(g)  # type: ignore[assignment]
 
             if matching_part is None:
                 continue
