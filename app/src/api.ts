@@ -1,17 +1,31 @@
-/** HTTP client for the local Logico Python server. */
+/** HTTP client for the local MuSync Python server. */
 
 const PORT = 7765
 const BASE = `http://127.0.0.1:${PORT}`
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  let res: Response
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    throw new Error('Cannot reach the MuSync server. If running in dev mode, start it with: musync serve')
+  }
   const json = await res.json()
   if (!res.ok) throw new Error(json.detail ?? `HTTP ${res.status}`)
   return json as T
+}
+
+export async function checkHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(1500) })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 // ── types ─────────────────────────────────────────────────────────────────────

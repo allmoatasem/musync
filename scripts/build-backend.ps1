@@ -1,5 +1,5 @@
 # Build the Python backend into a self-contained binary for Windows.
-# Output: app\resources\logico-server\logico-server.exe
+# Output: app\resources\musync-server\musync-server.exe
 #
 # Requirements:
 #   pip install pyinstaller
@@ -15,28 +15,28 @@ Set-Location $RepoRoot
 pyinstaller `
   --noconfirm `
   --onedir `
-  --name logico-server `
+  --name musync-server `
   --distpath $OutDir `
   --workpath "$env:TEMP\pyinstaller-build" `
   --specpath "$env:TEMP\pyinstaller-specs" `
-  --hidden-import logico `
-  --hidden-import logico.cli `
-  --hidden-import logico.server `
-  --hidden-import logico.model `
-  --hidden-import logico.mapping `
-  --hidden-import logico.watcher `
-  --hidden-import logico.sync.snapshot `
-  --hidden-import logico.sync.diff `
-  --hidden-import logico.dorico.dtn `
-  --hidden-import logico.dorico.parser `
-  --hidden-import logico.dorico.extractor `
-  --hidden-import logico.dorico.writer `
-  --hidden-import logico.staffpad.parser `
-  --hidden-import logico.staffpad.extractor `
-  --hidden-import logico.staffpad.writer `
-  --hidden-import logico.logic.parser `
-  --hidden-import logico.logic.extractor `
-  --hidden-import logico.logic.writer `
+  --hidden-import musync `
+  --hidden-import musync.cli `
+  --hidden-import musync.server `
+  --hidden-import musync.model `
+  --hidden-import musync.mapping `
+  --hidden-import musync.watcher `
+  --hidden-import musync.sync.snapshot `
+  --hidden-import musync.sync.diff `
+  --hidden-import musync.dorico.dtn `
+  --hidden-import musync.dorico.parser `
+  --hidden-import musync.dorico.extractor `
+  --hidden-import musync.dorico.writer `
+  --hidden-import musync.staffpad.parser `
+  --hidden-import musync.staffpad.extractor `
+  --hidden-import musync.staffpad.writer `
+  --hidden-import musync.logic.parser `
+  --hidden-import musync.logic.extractor `
+  --hidden-import musync.logic.writer `
   --hidden-import uvicorn `
   --hidden-import uvicorn.logging `
   --hidden-import uvicorn.loops `
@@ -50,8 +50,8 @@ pyinstaller `
   --hidden-import uvicorn.lifespan.on `
   --hidden-import fastapi `
   --collect-all watchdog `
-  src\logico\server.py
+  src\musync\server.py
 
 Write-Host ""
-Write-Host "Done. Binary at: $OutDir\logico-server\logico-server.exe" -ForegroundColor Green
+Write-Host "Done. Binary at: $OutDir\musync-server\musync-server.exe" -ForegroundColor Green
 Write-Host "Next: cd app && npm run dist:win"

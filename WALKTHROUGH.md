@@ -1,6 +1,6 @@
-# Logico — Educational Walkthrough
+# MuSync — Educational Walkthrough
 
-A guided tour through the Logico codebase for someone learning Python. We'll start from the file you'd open first if you cloned this repo, then drill down into the techniques that make each part of the project work.
+A guided tour through the MuSync codebase for someone learning Python. We'll start from the file you'd open first if you cloned this repo, then drill down into the techniques that make each part of the project work.
 
 If you've never written Python before, you'll still get something out of this — the focus is on *why* the code is shaped the way it is, not just *what* it does.
 
@@ -45,9 +45,9 @@ This is called a **hub-and-spoke architecture**, and it's how almost every multi
 ## 2. Project layout: what each folder does
 
 ```
-src/logico/
+src/musync/
 ├── model.py              ← The "common model" — shared data classes
-├── cli.py                ← Command-line interface (logico read / diff / sync)
+├── cli.py                ← Command-line interface (musync read / diff / sync)
 ├── dorico/
 │   ├── dtn.py            ← Low-level binary parser/serializer for Dorico's .dtn format
 │   ├── parser.py         ← Opens a .dorico ZIP and hands the .dtn to dtn.py
@@ -75,7 +75,7 @@ This **separation of concerns** means we can change *how* we parse a format with
 
 ## 3. Concept: a "common model" and why we need one
 
-Open [src/logico/model.py](src/logico/model.py). The whole file is essentially a list of `@dataclass` definitions:
+Open [src/musync/model.py](src/musync/model.py). The whole file is essentially a list of `@dataclass` definitions:
 
 ```python
 @dataclass
@@ -174,7 +174,7 @@ If you don't recognize one of these, look it up before continuing. They appear c
 
 StaffPad stores its projects as **SQLite databases**. SQLite is a full SQL database that lives entirely inside a single file. Python has a built-in driver, so reading a `.stf` file is just SQL queries.
 
-Open [src/logico/staffpad/parser.py](src/logico/staffpad/parser.py).
+Open [src/musync/staffpad/parser.py](src/musync/staffpad/parser.py).
 
 ### Step 1: Open the database
 
@@ -248,7 +248,7 @@ Lesson: **smaller queries are often faster than big ones**, especially when SQLi
 
 ## 6. Walkthrough: the Logic Pro parser (raw bytes)
 
-Open [src/logico/logic/parser.py](src/logico/logic/parser.py). This is harder — we're reading **raw bytes** from a binary file, with no schema, no documentation, no SQL.
+Open [src/musync/logic/parser.py](src/musync/logic/parser.py). This is harder — we're reading **raw bytes** from a binary file, with no schema, no documentation, no SQL.
 
 ### Step 1: Read the file
 
@@ -307,7 +307,7 @@ The `& 0x7F` is **bitwise AND**. MIDI note numbers and velocities are limited to
 
 ## 7. Walkthrough: the Dorico parser (custom binary format)
 
-This is the deepest rabbit hole. Open [src/logico/dorico/dtn.py](src/logico/dorico/dtn.py).
+This is the deepest rabbit hole. Open [src/musync/dorico/dtn.py](src/musync/dorico/dtn.py).
 
 A Dorico `.dorico` file is a ZIP archive. Inside the ZIP is a file called `score.dtn` that uses a **completely custom binary format** invented by Dorico's developers. There's no documentation. We had to figure it out from scratch by staring at hex dumps for hours.
 
@@ -560,14 +560,14 @@ shutil.copytree(logicx_path, backup_dir)
 
 ## 9. Walkthrough: the CLI
 
-Open [src/logico/cli.py](src/logico/cli.py). This is the user-facing entry point.
+Open [src/musync/cli.py](src/musync/cli.py). This is the user-facing entry point.
 
 ```python
 def main() -> None:
     args = sys.argv[1:]    # skip the program name itself
 
     if not args or args[0] in ("-h", "--help", "help"):
-        print("Logico — ...")
+        print("MuSync — ...")
         sys.exit(0)
 
     command = args[0]
@@ -587,10 +587,10 @@ The CLI is registered as a system command via `pyproject.toml`:
 
 ```toml
 [project.scripts]
-logico = "logico.cli:main"
+musync = "musync.cli:main"
 ```
 
-This tells `pip` that when the package is installed, it should create a command-line tool called `logico` that runs the `main` function in `logico.cli`. After `pip install -e .`, you can type `logico` from any terminal.
+This tells `pip` that when the package is installed, it should create a command-line tool called `musync` that runs the `main` function in `musync.cli`. After `pip install -e .`, you can type `musync` from any terminal.
 
 ### Auto-detecting formats
 
@@ -624,7 +624,7 @@ def _load_project(path):
         return extract_project(parse_dorico(path))
 ```
 
-This is a deliberate choice. If you only ever use `logico read mysong.stf`, you don't need to load the Dorico or Logic parsers at all. Lazy imports keep startup time fast and let the CLI work even if one parser has a bug — you only crash on the format you actually use.
+This is a deliberate choice. If you only ever use `musync read mysong.stf`, you don't need to load the Dorico or Logic parsers at all. Lazy imports keep startup time fast and let the CLI work even if one parser has a bug — you only crash on the format you actually use.
 
 ---
 
@@ -785,9 +785,9 @@ If you want to extend this project, the most interesting (and most needed) tasks
 
 2. **Multi-track Dorico read** — right now all voice stream blocks get collapsed into one track. The project needs to map voice blocks → instrument tracks using the flow's `eventStreams` → `blockInstanceIDs` → player/stave metadata chain.
 
-3. **Better track matching** — the current sync only matches tracks by exact name. Add fuzzy matching, instrument family detection, and a `logico.toml` config file for user-defined mappings.
+3. **Better track matching** — the current sync only matches tracks by exact name. Add fuzzy matching, instrument family detection, and a `musync.toml` config file for user-defined mappings.
 
-4. **A file watcher** — `logico watch source.stf dest.logicx` that automatically syncs whenever either file changes. Use the `watchdog` library (already in our dependencies). The main challenge is debouncing (the app may write the file several times during a save) and avoiding sync loops (the watcher shouldn't re-trigger on its own writes).
+4. **A file watcher** — `musync watch source.stf dest.logicx` that automatically syncs whenever either file changes. Use the `watchdog` library (already in our dependencies). The main challenge is debouncing (the app may write the file several times during a save) and avoiding sync loops (the watcher shouldn't re-trigger on its own writes).
 
 5. **A test suite** — write `pytest` tests that verify round-tripping for all three formats, so we don't break things accidentally. The test projects (`test.dorico`, `Code Noir.stf`, `Project.logicx`) are already in the repo.
 

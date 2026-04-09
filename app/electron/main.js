@@ -7,6 +7,8 @@ const http = require('http')
 
 const SERVER_PORT = 7765
 const IS_DEV = !app.isPackaged
+// --no-server flag: dev script already started Python, skip spawning
+const SKIP_SPAWN = process.argv.includes('--no-server')
 
 // ── Python server lifecycle ──────────────────────────────────────────────────
 
@@ -14,17 +16,17 @@ let pythonProcess = null
 
 function getPythonBinary() {
   if (IS_DEV) {
-    // In dev, use the system Python with the installed logico package
+    // In dev, use the system Python with the installed musync package
     return process.platform === 'win32' ? 'python' : 'python3'
   }
   // In production, use the bundled PyInstaller binary
   const ext = process.platform === 'win32' ? '.exe' : ''
-  return path.join(process.resourcesPath, 'resources', `logico-server${ext}`)
+  return path.join(process.resourcesPath, 'resources', `musync-server${ext}`)
 }
 
 function getServerArgs() {
   if (IS_DEV) {
-    return ['-m', 'logico', 'serve', '--port', String(SERVER_PORT)]
+    return ['-m', 'musync', 'serve', '--port', String(SERVER_PORT)]
   }
   return ['--port', String(SERVER_PORT)]
 }
@@ -142,13 +144,15 @@ ipcMain.handle('open-folder-dialog', async () => {
 // ── app lifecycle ─────────────────────────────────────────────────────────────
 
 app.whenReady().then(async () => {
-  startPythonServer()
+  if (!SKIP_SPAWN) {
+    startPythonServer()
+  }
 
   try {
     await waitForServer()
   } catch (e) {
     console.error('Python server failed to start:', e.message)
-    // Show window anyway so user sees an error state
+    // Show window anyway — the UI will show a "server offline" state
   }
 
   createWindow()

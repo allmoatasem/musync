@@ -105,7 +105,7 @@ export default function WatchView() {
           <strong style={{ color: 'var(--text)' }}>How it works:</strong><br />
           Every save to the source file is detected within ~1 second.
           The destination is updated automatically and a snapshot is saved to{' '}
-          <code style={{ color: 'var(--accent)' }}>.logico/</code> so you can revert in History.
+          <code style={{ color: 'var(--accent)' }}>.musync/</code> so you can revert in History.
         </div>
       )}
     </div>

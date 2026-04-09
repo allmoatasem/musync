@@ -1,12 +1,12 @@
 {
-  "name": "logico",
+  "name": "musync",
   "version": "0.1.0",
   "description": "Sync musical projects between Logic Pro, Dorico, and StaffPad",
   "author": "Moatasem Samir",
   "license": "MIT",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "concurrently --names \"py,vite,electron\" --prefix-colors \"yellow,cyan,magenta\" \"python3 -m musync serve\" \"vite\" \"wait-on http://127.0.0.1:7765/health http://localhost:5173 && electron . --no-server\"",
     "build": "vite build",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
@@ -27,9 +27,9 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.logico.app",
+    "appId": "com.musync.app",
     "directories": { "output": "release" },
-    "productName": "Logico",
+    "productName": "MuSync",
     "copyright": "Copyright © 2026 Moatasem Samir",
     "asar": true,
     "files": [

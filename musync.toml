@@ -1,0 +1,19 @@
+# musync.toml — track name mappings across formats
+#
+# Each [[tracks]] entry maps the same instrument across Logic Pro, Dorico,
+# and StaffPad. MuSync uses this when matching tracks during sync.
+# Names are case-sensitive and must match exactly as they appear in the project.
+#
+# Built-in fuzzy matching handles common variants (e.g. "Violin" ↔ "Violino.")
+# automatically — you only need entries here for non-standard names.
+
+# Example (uncomment and adjust to your projects):
+# [[tracks]]
+# logic    = "Inst 1"
+# dorico   = "Violino."
+# staffpad = "Violin"
+
+# [[tracks]]
+# logic    = "Piano"
+# dorico   = "Pianoforte."
+# staffpad = "Piano"

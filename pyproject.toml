@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "logico"
+name = "musync"
 version = "0.1.0"
 description = "Bidirectional sync between Logic Pro and Dorico projects"
 requires-python = ">=3.11"
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-logico = "logico.cli:main"
+musync = "musync.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/logico"]
+packages = ["src/musync"]

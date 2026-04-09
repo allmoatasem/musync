@@ -1,18 +1,18 @@
-# Logico
+# MuSync
 
 Sync musical data between **Logic Pro**, **Dorico**, and **StaffPad** projects.
 
-Logico parses each application's proprietary file format, extracts MIDI notes, tempo, time signatures, and key signatures into a common model, and writes them back to a destination project.
+MuSync parses each application's proprietary file format, extracts MIDI notes, tempo, time signatures, and key signatures into a common model, and writes them back to a destination project.
 
 ## Why
 
-If you compose across multiple tools — sketching in StaffPad, engraving in Dorico, producing in Logic Pro — keeping all three projects in sync currently requires manual re-entry. Logico bridges them by reading and writing the underlying file formats directly.
+If you compose across multiple tools — sketching in StaffPad, engraving in Dorico, producing in Logic Pro — keeping all three projects in sync currently requires manual re-entry. MuSync bridges them by reading and writing the underlying file formats directly.
 
 ## Getting the app
 
 **Musicians:** download the installer from the Releases page — no Python or terminal required.
-- macOS: `Logico-x.x.x.dmg`
-- Windows: `Logico-Setup-x.x.x.exe`
+- macOS: `MuSync-x.x.x.dmg`
+- Windows: `MuSync-Setup-x.x.x.exe`
 
 The app is fully self-contained. The Python engine is bundled inside.
 
@@ -24,7 +24,7 @@ pip install -e .
 
 Requires Python 3.11+.
 
-> **Tip (macOS):** If `logico` isn't found after installation, your shell may be inside a project-specific virtualenv. Install into the system Homebrew Python to make the command globally available:
+> **Tip (macOS):** If `musync` isn't found after installation, your shell may be inside a project-specific virtualenv. Install into the system Homebrew Python to make the command globally available:
 > ```bash
 > /opt/homebrew/bin/pip3 install -e . --break-system-packages
 > ```
@@ -33,7 +33,7 @@ Requires Python 3.11+.
 
 ```bash
 # 1. Bundle Python into a self-contained binary (macOS)
-./scripts/build-backend.sh         # → app/resources/logico-server/
+./scripts/build-backend.sh         # → app/resources/musync-server/
 
 # 1. Bundle Python (Windows, in PowerShell)
 .\scripts\build-backend.ps1
@@ -41,8 +41,8 @@ Requires Python 3.11+.
 # 2. Build the Electron installer
 cd app
 npm install
-npm run dist:mac    # → app/release/Logico-x.x.x.dmg
-npm run dist:win    # → app/release/Logico-Setup-x.x.x.exe
+npm run dist:mac    # → app/release/MuSync-x.x.x.dmg
+npm run dist:win    # → app/release/MuSync-Setup-x.x.x.exe
 
 # Or do everything at once on macOS:
 ./scripts/build-all.sh
@@ -51,7 +51,7 @@ npm run dist:win    # → app/release/Logico-Setup-x.x.x.exe
 ### Development mode (hot reload)
 
 ```bash
-pip install -e .          # install logico CLI
+pip install -e .          # install musync CLI
 cd app && npm install
 npm run dev               # starts Vite + Electron concurrently
 ```
@@ -63,9 +63,9 @@ npm run dev               # starts Vite + Electron concurrently
 Display the contents of any supported project:
 
 ```bash
-logico read mysong.dorico
-logico read mysong.stf
-logico read MyProject.logicx        # or the parent directory
+musync read mysong.dorico
+musync read mysong.stf
+musync read MyProject.logicx        # or the parent directory
 ```
 
 Output includes title, tempo, time/key signatures, tracks, and notes.
@@ -75,10 +75,10 @@ Output includes title, tempo, time/key signatures, tracks, and notes.
 Show differences between two projects (any format combination):
 
 ```bash
-logico diff mysong.dorico mysong.stf
-logico diff MyProject.logicx mysong.stf
-logico diff mysong.dorico @2          # current state vs snapshot 2
-logico diff mysong.dorico @1 @3       # snapshot 1 vs snapshot 3
+musync diff mysong.dorico mysong.stf
+musync diff MyProject.logicx mysong.stf
+musync diff mysong.dorico @2          # current state vs snapshot 2
+musync diff mysong.dorico @1 @3       # snapshot 1 vs snapshot 3
 ```
 
 The diff highlights tempo/signature mismatches and per-track note differences (added, removed, changed).
@@ -88,11 +88,11 @@ The diff highlights tempo/signature mismatches and per-track note differences (a
 Copy notes from a source project into a destination project:
 
 ```bash
-logico sync source.stf dest.logicx
-logico sync MyProject.logicx mysong.stf
+musync sync source.stf dest.logicx
+musync sync MyProject.logicx mysong.stf
 ```
 
-Tracks are matched by name, then by fuzzy instrument alias (e.g. `"Violino."` ↔ `"violin"`), then by explicit mapping in `logico.toml`. Every successful sync automatically saves a snapshot of the destination.
+Tracks are matched by name, then by fuzzy instrument alias (e.g. `"Violino."` ↔ `"violin"`), then by explicit mapping in `musync.toml`. Every successful sync automatically saves a snapshot of the destination.
 
 > **Important — destination file behavior:** sync **modifies the destination file in place** after creating a backup. The source file is never touched.
 > - StaffPad: backup at `<dest>.stf.backup`
@@ -104,25 +104,25 @@ Tracks are matched by name, then by fuzzy instrument alias (e.g. `"Violino."` �
 Every sync saves a snapshot automatically. You can also inspect and restore history manually:
 
 ```bash
-logico log mysong.dorico              # list all snapshots with timestamps and change summaries
-logico diff mysong.dorico @2          # diff current state vs snapshot 2
-logico diff mysong.dorico @1 @3       # diff snapshot 1 vs snapshot 3
-logico revert mysong.dorico @3        # restore snapshot 3 (saves current state first)
+musync log mysong.dorico              # list all snapshots with timestamps and change summaries
+musync diff mysong.dorico @2          # diff current state vs snapshot 2
+musync diff mysong.dorico @1 @3       # diff snapshot 1 vs snapshot 3
+musync revert mysong.dorico @3        # restore snapshot 3 (saves current state first)
 ```
 
-Snapshots are stored in `.logico/<filename>/` next to the project file as plain JSON — human-readable and easy to back up.
+Snapshots are stored in `.musync/<filename>/` next to the project file as plain JSON — human-readable and easy to back up.
 
 ### Auto-sync on save
 
 ```bash
-logico watch source.dorico dest.logicx
+musync watch source.dorico dest.logicx
 ```
 
 Monitors the source file and syncs to the destination automatically whenever you save. Uses a 1-second debounce to handle rapid saves and ignores its own writes to prevent sync loops.
 
 ### Instrument mapping
 
-Create a `logico.toml` in your project directory to map track names across formats:
+Create a `musync.toml` in your project directory to map track names across formats:
 
 ```toml
 [[tracks]]
@@ -175,12 +175,12 @@ Verified against real project files:
 
 ### Phase 3 — Version history & diff/merge engine (complete)
 
-Every sync creates a commit in a `.logico/` directory alongside your projects — a lightweight version history for your musical data, independent of what Logic/Dorico/StaffPad do internally.
+Every sync creates a commit in a `.musync/` directory alongside your projects — a lightweight version history for your musical data, independent of what Logic/Dorico/StaffPad do internally.
 
 ```bash
-logico log mysong.dorico           # show all past versions
-logico diff mysong.dorico @2       # diff current vs version 2
-logico revert mysong.dorico @3     # restore version 3 (backs up current first)
+musync log mysong.dorico           # show all past versions
+musync diff mysong.dorico @2       # diff current vs version 2
+musync revert mysong.dorico @3     # restore version 3 (backs up current first)
 ```
 
 - **Snapshots** — each sync saves a canonical JSON snapshot of the Project model (`notes, tempo, time sig, key sig`) with a timestamp and hash
@@ -191,7 +191,7 @@ logico revert mysong.dorico @3     # restore version 3 (backs up current first)
 ### Phase 4 — File watcher daemon (complete)
 
 ```bash
-logico watch source.dorico dest.logicx   # auto-sync on every save
+musync watch source.dorico dest.logicx   # auto-sync on every save
 ```
 
 Uses `watchdog` (already a dependency) to monitor both files. On save, diffs against the last snapshot and applies only the changed notes — not a full rewrite. Debounces rapid saves and detects its own writes to prevent sync loops.
@@ -200,13 +200,13 @@ Uses `watchdog` (already a dependency) to monitor both files. On save, diffs aga
 
 - **Dynamics** — sync `pp/p/mp/mf/f/ff` markings and hairpins (crescendo/diminuendo); map Dorico dynamic entities ↔ Logic MIDI CC1/CC11
 - **Articulations** — staccato, accent, tenuto, marcato; map Dorico articulation IDs ↔ Logic note flags
-- **Instrument mapping** — `logico.toml` config for matching tracks across formats by instrument family, not just exact name; fuzzy matching and alias tables
+- **Instrument mapping** — `musync.toml` config for matching tracks across formats by instrument family, not just exact name; fuzzy matching and alias tables
 
 ### Phase 6 — Cross-platform desktop UI (complete)
 
 A native-feeling Electron + React app targeting macOS and Windows. No Python knowledge required — the Python engine is bundled inside the installer via PyInstaller.
 
-**Architecture:** Electron shell spawns a local FastAPI server (`logico serve`) on startup and communicates with it over localhost. All format logic stays in Python; the UI is pure React.
+**Architecture:** Electron shell spawns a local FastAPI server (`musync serve`) on startup and communicates with it over localhost. All format logic stays in Python; the UI is pure React.
 
 **Views:**
 - **Sync** — pick source + destination, click Sync Now, see the result with note count and snapshot number
@@ -214,9 +214,9 @@ A native-feeling Electron + React app targeting macOS and Windows. No Python kno
 - **Watch** — toggle auto-sync on save; status indicator shows live watch state
 
 **Bundling:**
-- `scripts/build-backend.sh` (macOS) / `scripts/build-backend.ps1` (Windows) — PyInstaller bundles the Python runtime + all dependencies into `app/resources/logico-server/`
+- `scripts/build-backend.sh` (macOS) / `scripts/build-backend.ps1` (Windows) — PyInstaller bundles the Python runtime + all dependencies into `app/resources/musync-server/`
 - `electron-builder` packages the Electron app + the Python binary into a signed DMG (macOS) or NSIS installer (Windows)
-- In dev mode, Electron spawns `python -m logico serve` against the local source tree so no build step is needed
+- In dev mode, Electron spawns `python -m musync serve` against the local source tree so no build step is needed
 
 ## How it works
 
@@ -224,7 +224,7 @@ A native-feeling Electron + React app targeting macOS and Windows. No Python kno
 
 ```
                     ┌─────────────┐
-                    │  Logico CLI  │
+                    │  MuSync CLI  │
                     └──────┬──────┘
                            │
                 ┌──────────┴──────────┐
@@ -292,8 +292,8 @@ Musical hierarchy: `kScore → flows → blocks → events`. Notes live in `kVoi
 ## Project structure
 
 ```
-logico/                           ← monorepo root
-├── src/logico/                   ← Python backend
+musync/                           ← monorepo root
+├── src/musync/                   ← Python backend
 │   ├── model.py                  Common music data model
 │   ├── cli.py                    CLI (read, diff, sync, log, revert, watch, serve)
 │   ├── server.py                 FastAPI server (used by the desktop app)

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo:*)",
+      "Bash(pip show:*)",
+      "Bash(pip3 install:*)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(/usr/bin/python3 --version)",
+      "Bash(/opt/homebrew/bin/pip3 install:*)",
+      "Bash(/opt/homebrew/bin/python3 -c \"import logico; print\\('OK'\\)\")",
+      "Bash(/opt/homebrew/bin/logico read:*)",
+      "Bash(python -c ':*)",
+      "Bash(logico sync:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git push:*)",
+      "Bash(git *)",
+      "Bash(python *)",
+      "Bash(pip *)",
+      "Bash(logico *)",
+      "Bash(chmod +x /Users/moatasem/software/playground/logico/scripts/build-backend.sh /Users/moatasem/software/playground/logico/scripts/build-all.sh)",
+      "Bash(find /Users/moatasem/software/playground/logico/src/musync -name '*.py' -exec sed -i '' -e s/Logico/MuSync/g -e 's/logico\\\\.toml/musync.toml/g' -e 's/\"\\\\.logico\"/\"\\\\.musync\"/g' -e 's/logico serve/musync serve/g' -e 's/logico read/musync read/g' -e 's/logico diff/musync diff/g' -e 's/logico log/musync log/g' -e 's/logico sync/musync sync/g' -e 's/logico revert/musync revert/g' -e 's/logico watch/musync watch/g' -e 's/logico --help/musync --help/g' -e 's/'\\\\''logico'\\\\''/'\\\\''musync'\\\\''/g' '{}' +)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}
